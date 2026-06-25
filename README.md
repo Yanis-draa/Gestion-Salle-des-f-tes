@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🏛 FESTIVA — Logiciel de Gestion de Salle des Fêtes
 
 > Logiciel desktop professionnel pour la gestion complète d'une salle des fêtes en Algérie.  
@@ -213,3 +214,6 @@ Pour toute question ou personnalisation, contactez le développeur.
 ---
 
 *FESTIVA v1.0.0 — Made in Algeria 🇩🇿*
+=======
+# Gestion-Salle-des-f-tes
+>>>>>>> 6ba7fdb7f9d3697a7e57a3b1f790979f089b9acf
