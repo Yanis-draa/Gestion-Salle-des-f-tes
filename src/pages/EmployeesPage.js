@@ -344,7 +344,17 @@ function EmployeeFormModal({ editData, onClose, onSaved }) {
             <div className="form-group"><label>Téléphone</label><input className="input" value={form.telephone} onChange={e => setForm({...form, telephone: e.target.value})} placeholder="Numéro de téléphone" /></div>
             <div className="form-group"><label>Poste</label><select className="input" value={form.poste} onChange={e => setForm({...form, poste: e.target.value})}>{EMPLOYEE_TYPES.map(t => <option key={t}>{t}</option>)}</select></div>
             <div className="form-group"><label>Grade</label><select className="input" value={form.grade} onChange={e => setForm({...form, grade: e.target.value})}>{GRADES.map(g => <option key={g}>{g}</option>)}</select></div>
-            <div className="form-group"><label>Prix par jour (DA)</label><input className="input" type="number" value={form.prix_par_jour} onChange={e => setForm({...form, prix_par_jour: e.target.value})} placeholder="Ex: 3000" /></div>
+            <div className="form-group">
+              <label>Prix par jour (DA)</label>
+              <input
+                className="input"
+                type="text"
+                inputMode="numeric"
+                value={form.prix_par_jour}
+                onChange={e => setForm({...form, prix_par_jour: e.target.value.replace(/[^0-9]/g, '')})}
+                placeholder="Ex: 3000"
+              />
+            </div>
             <div className="form-group"><label>Date de recrutement</label><input className="input" type="date" value={form.date_recrutement || ''} onChange={e => setForm({...form, date_recrutement: e.target.value})} /></div>
           </div>
           <div className="form-group"><label>Adresse</label><input className="input" value={form.adresse || ''} onChange={e => setForm({...form, adresse: e.target.value})} placeholder="L'adresse de l'employé" /></div>

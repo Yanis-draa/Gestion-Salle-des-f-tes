@@ -62,14 +62,25 @@ module.exports = function(ipcMain) {
   ipcMain.handle('reservations:create', async (_, data) => {
     try {
       const db = getDb();
-      const r = db.prepare(`
-        INSERT INTO reservations (client_id, type_fete, salle, date_evenement, periode, heure_debut, heure_fin, nombre_invites, prix_total, avance, statut, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(data.client_id, data.type_fete, data.salle, data.date_evenement, data.periode || 'Soir', data.heure_debut, data.heure_fin, data.nombre_invites, data.prix_total, data.avance || 0, data.statut || 'pending', data.notes);
+     const r = db.prepare(`
+      INSERT INTO reservations (client_id, type_fete, salle, date_evenement, periode, heure_debut, heure_fin, nombre_invites, prix_total, avance, statut, notes, pack_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(data.client_id, data.type_fete, data.salle, data.date_evenement, data.periode || 'Soir', data.heure_debut, data.heure_fin, data.nombre_invites, data.prix_total, data.avance || 0, data.statut || 'pending', data.notes, data.pack_id || null);
       if (parseFloat(data.avance) > 0) {
-        db.prepare('INSERT INTO payments (reservation_id, montant, methode, type_paiement, date_paiement) VALUES (?, ?, ?, ?, ?)').run(r.lastInsertRowid, data.avance, 'Espèces', 'Avance', new Date().toISOString().slice(0,10));
-      }
-      return { success: true, id: r.lastInsertRowid };
+  db.prepare('INSERT INTO payments (reservation_id, montant, methode, type_paiement, date_paiement) VALUES (?, ?, ?, ?, ?)').run(r.lastInsertRowid, data.avance, 'Espèces', 'Avance', new Date().toISOString().slice(0,10));
+}
+
+// ── Services du pack → dépenses de la réservation ──
+if (data.pack_id && data.services?.length > 0) {
+  const insertExp = db.prepare("INSERT INTO reservation_expenses (reservation_id, categorie, description, montant) VALUES (?,?,?,?)");
+  for (const service of data.services) {
+    if (service.prix > 0) {
+      insertExp.run(r.lastInsertRowid, 'Services', service.nom, service.prix);
+    }
+  }
+}
+
+return { success: true, id: r.lastInsertRowid };
     } catch (e) { return { success: false, error: e.message }; }
   });
 
@@ -77,8 +88,8 @@ module.exports = function(ipcMain) {
     try {
       const db = getDb();
       db.prepare(`
-        UPDATE reservations SET client_id=?, type_fete=?, salle=?, date_evenement=?, periode=?, heure_debut=?, heure_fin=?, nombre_invites=?, prix_total=?, avance=?, statut=?, notes=? WHERE id=?
-      `).run(data.client_id, data.type_fete, data.salle, data.date_evenement, data.periode || 'Soir', data.heure_debut, data.heure_fin, data.nombre_invites, data.prix_total, data.avance, data.statut, data.notes, id);
+        UPDATE reservations SET client_id=?, type_fete=?, salle=?, date_evenement=?, periode=?, heure_debut=?, heure_fin=?, nombre_invites=?, prix_total=?, avance=?, statut=?, notes=?, pack_id=? WHERE id=?
+      `).run(data.client_id, data.type_fete, data.salle, data.date_evenement, data.periode || 'Soir', data.heure_debut, data.heure_fin, data.nombre_invites, data.prix_total, data.avance, data.statut, data.notes, data.pack_id || null, id);
 
       // Synchroniser avance avec payments
       const avance = parseFloat(data.avance) || 0;
@@ -88,10 +99,25 @@ module.exports = function(ipcMain) {
       } else if (avance > 0) {
         db.prepare("INSERT INTO payments (reservation_id, montant, methode, type_paiement, date_paiement) VALUES (?,?,?,?,?)").run(id, avance, 'Espèces', 'Avance', data.date_evenement);
       }
+      // Recalculer le catering si nombre_invites change
+      const newNbInvites = parseInt(data.nombre_invites) || 0;
+      const cat = db.prepare('SELECT * FROM catering WHERE reservation_id=?').get(id);
+      if (cat) {
+        const newTotal = newNbInvites * (cat.prix_par_personne || 0);
+        db.prepare(`
+          UPDATE catering SET nombre_personnes=?, total_catering=? WHERE reservation_id=?
+        `).run(newNbInvites, newTotal, id);
+        db.prepare(`
+          UPDATE reservation_expenses SET montant=?, description=?
+          WHERE reservation_id=? AND categorie='Catering'
+        `).run(newTotal, `${cat.nom_menu} — ${newNbInvites} personnes`, id);
+      }
 
-      return { success: true };
+return { success: true };
     } catch (e) { return { success: false, error: e.message }; }
   });
+
+ 
 
   ipcMain.handle('reservations:cancel', async (_, id) => {
     try {
@@ -163,4 +189,22 @@ ipcMain.handle('reservations:getFinancialDetails', async (_, id) => {
     };
   } catch (e) { return { success: false, error: e.message }; }
 });
+
+ipcMain.handle('reservations:deletePackExpenses', async (_, reservationId) => {
+    try {
+      const db = getDb();
+      db.prepare("DELETE FROM reservation_expenses WHERE reservation_id=? AND categorie='Services'").run(reservationId);
+      return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
+  });
+
+  ipcMain.handle('reservations:addExpense', async (_, reservationId, categorie, description, montant) => {
+    try {
+      const db = getDb();
+      db.prepare(
+        "INSERT INTO reservation_expenses (reservation_id, categorie, description, montant) VALUES (?,?,?,?)"
+      ).run(reservationId, categorie, description, montant);
+      return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
+  });
 };

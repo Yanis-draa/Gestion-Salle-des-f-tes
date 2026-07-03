@@ -107,7 +107,7 @@ export function StatsPage() {
         <div className="card">
           <h3 style={{ marginBottom: 16 }}>Clients les plus fidèles</h3>
           <table className="data-table">
-            <thead><tr><th>Client</th><th>Réservations</th><th>Total DA</th></tr></thead>
+            <thead><tr><th>Client</th><th>Réservations</th><th>Total Payé</th></tr></thead>
             <tbody>
               {(stats?.topClients || []).map((c, i) => (
                 <tr key={i}>

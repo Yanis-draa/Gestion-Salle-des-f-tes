@@ -27,6 +27,8 @@ contextBridge.exposeInMainWorld('api', {
     deleteAll: () => ipcRenderer.invoke('reservations:deleteAll'),
     checkConflict: (date, salle) => ipcRenderer.invoke('reservations:checkConflict', date, salle),
     getFinancialDetails: (id) => ipcRenderer.invoke('reservations:getFinancialDetails', id),
+    deletePackExpenses: (id) => ipcRenderer.invoke('reservations:deletePackExpenses', id),
+    addExpense: (id, categorie, description, montant) => ipcRenderer.invoke('reservations:addExpense', id, categorie, description, montant),
   },
   payments: {
     getAll: () => ipcRenderer.invoke('payments:getAll'),

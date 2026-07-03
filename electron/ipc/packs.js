@@ -28,7 +28,18 @@ module.exports = function(ipcMain) {
         WHERE p.actif = 1
         ORDER BY p.prix ASC
       `).all();
-      return { success: true, data: rows.map(r => ({ ...r, services: JSON.parse(r.services || '[]') })) };
+      return {
+        success: true,
+        data: rows.map(r => {
+          let services = [];
+          try { services = JSON.parse(r.services || '[]'); } catch {}
+          // Compatibilité : si ancien format (tableau de strings), convertir
+          if (services.length > 0 && typeof services[0] === 'string') {
+            services = services.map(s => ({ nom: s, prix: 0 }));
+          }
+          return { ...r, services };
+        })
+      };
     } catch(e) { return { success: false, error: e.message }; }
   });
 
@@ -45,7 +56,12 @@ module.exports = function(ipcMain) {
         WHERE p.id = ?
       `).get(id);
       if (!row) return { success: false, error: 'Pack introuvable' };
-      return { success: true, data: { ...row, services: JSON.parse(row.services || '[]') } };
+      let services = [];
+      try { services = JSON.parse(row.services || '[]'); } catch {}
+      if (services.length > 0 && typeof services[0] === 'string') {
+        services = services.map(s => ({ nom: s, prix: 0 }));
+      }
+      return { success: true, data: { ...row, services } };
     } catch(e) { return { success: false, error: e.message }; }
   });
 
@@ -53,10 +69,17 @@ module.exports = function(ipcMain) {
     try {
       const db = getDb();
       initPacksTable(db);
+      // services = [{ nom: 'DJ', prix: 5000 }, ...]
       const r = db.prepare(`
         INSERT INTO packs (nom, prix, menu_template_id, services, description)
         VALUES (?, ?, ?, ?, ?)
-      `).run(data.nom, data.prix || 0, data.menu_template_id || null, JSON.stringify(data.services || []), data.description || '');
+      `).run(
+        data.nom,
+        data.prix || 0,
+        data.menu_template_id || null,
+        JSON.stringify(data.services || []),
+        data.description || ''
+      );
       return { success: true, id: r.lastInsertRowid };
     } catch(e) { return { success: false, error: e.message }; }
   });
@@ -65,7 +88,14 @@ module.exports = function(ipcMain) {
     try {
       getDb().prepare(`
         UPDATE packs SET nom=?, prix=?, menu_template_id=?, services=?, description=? WHERE id=?
-      `).run(data.nom, data.prix || 0, data.menu_template_id || null, JSON.stringify(data.services || []), data.description || '', id);
+      `).run(
+        data.nom,
+        data.prix || 0,
+        data.menu_template_id || null,
+        JSON.stringify(data.services || []),
+        data.description || '',
+        id
+      );
       return { success: true };
     } catch(e) { return { success: false, error: e.message }; }
   });

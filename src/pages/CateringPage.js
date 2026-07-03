@@ -28,17 +28,26 @@ function MenuTemplateForm({ editData, onClose, onSaved }) {
     entrees: '', plats: '', boissons: '', desserts: '', cafe: '', collation: '',
     notes: ''
   });
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => { if (editData) setForm({ ...editData }); }, [editData]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.nom) { toast.error('Le nom est obligatoire'); return; }
+  const doSave = async () => {
     const res = editData
       ? await api.catering.updateTemplate(editData.id, form)
       : await api.catering.createTemplate(form);
     if (res.success) { toast.success(editData ? 'Menu modifié' : 'Menu créé'); onSaved(); }
     else toast.error(res.error);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.nom) { toast.error('Le nom est obligatoire'); return; }
+    if (editData) {
+      setShowConfirm(true);
+      return;
+    }
+    await doSave();
   };
 
   return (
@@ -53,7 +62,15 @@ function MenuTemplateForm({ editData, onClose, onSaved }) {
             </div>
             <div className="form-group">
               <label>Prix / personne (DA) *</label>
-              <input className="input" type="number" value={form.prix_par_personne} onChange={e => setForm({...form, prix_par_personne: e.target.value})} placeholder="Prix par personne" required />
+              <input
+                className="input"
+                type="text"
+                inputMode="numeric"
+                value={form.prix_par_personne}
+                onChange={e => setForm({...form, prix_par_personne: e.target.value.replace(/[^0-9]/g, '')})}
+                placeholder="Prix par personne"
+                required
+              />
             </div>
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
               <label>Description</label>
@@ -70,57 +87,27 @@ function MenuTemplateForm({ editData, onClose, onSaved }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 8 }}>
             <div className="form-group">
               <label>🥗 Entrées / Hors-d'œuvre</label>
-              <textarea
-                className="input" rows="3"
-                value={form.entrees}
-                onChange={e => setForm({ ...form, entrees: e.target.value })}
-                placeholder="Chorba, Salades variées, Brick, Salade méchouia..."
-              />
+              <textarea className="input" rows="3" value={form.entrees} onChange={e => setForm({ ...form, entrees: e.target.value })} placeholder="Chorba, Salades variées, Brick, Salade méchouia..." />
             </div>
             <div className="form-group">
               <label>🍛 Plats</label>
-              <textarea
-                className="input" rows="3"
-                value={form.plats}
-                onChange={e => setForm({ ...form, plats: e.target.value })}
-                placeholder="Couscous royal, Poulet rôti, Mechoui..."
-              />
+              <textarea className="input" rows="3" value={form.plats} onChange={e => setForm({ ...form, plats: e.target.value })} placeholder="Couscous royal, Poulet rôti, Mechoui..." />
             </div>
             <div className="form-group">
               <label>🥤 Boissons</label>
-              <textarea
-                className="input" rows="3"
-                value={form.boissons}
-                onChange={e => setForm({ ...form, boissons: e.target.value })}
-                placeholder="Jus de fruits, Eau minérale, Soda..."
-              />
+              <textarea className="input" rows="3" value={form.boissons} onChange={e => setForm({ ...form, boissons: e.target.value })} placeholder="Jus de fruits, Eau minérale, Soda..." />
             </div>
             <div className="form-group">
               <label>🍮 Desserts</label>
-              <textarea
-                className="input" rows="3"
-                value={form.desserts}
-                onChange={e => setForm({ ...form, desserts: e.target.value })}
-                placeholder="Baklawa, Tarte, Glace..."
-              />
+              <textarea className="input" rows="3" value={form.desserts} onChange={e => setForm({ ...form, desserts: e.target.value })} placeholder="Baklawa, Tarte, Glace..." />
             </div>
             <div className="form-group">
               <label>☕ Café / Thé</label>
-              <textarea
-                className="input" rows="3"
-                value={form.cafe}
-                onChange={e => setForm({ ...form, cafe: e.target.value })}
-                placeholder="Café, Thé, Lait, Infusion..."
-              />
+              <textarea className="input" rows="3" value={form.cafe} onChange={e => setForm({ ...form, cafe: e.target.value })} placeholder="Café, Thé, Lait, Infusion..." />
             </div>
             <div className="form-group">
               <label>🥪 Collation / Cocktail</label>
-              <textarea
-                className="input" rows="3"
-                value={form.collation}
-                onChange={e => setForm({ ...form, collation: e.target.value })}
-                placeholder="Mini sandwichs, petits fours, snacks, jus..."
-              />
+              <textarea className="input" rows="3" value={form.collation} onChange={e => setForm({ ...form, collation: e.target.value })} placeholder="Mini sandwichs, petits fours, snacks, jus..." />
             </div>
           </div>
 
@@ -134,6 +121,14 @@ function MenuTemplateForm({ editData, onClose, onSaved }) {
             <button type="submit" className="btn btn-primary">✅ {editData ? 'Modifier' : 'Créer le menu'}</button>
           </div>
         </form>
+
+        {showConfirm && (
+          <ConfirmModal
+            message={`Modifier le menu "${form.nom}" ?\n\nCes modifications seront appliquées à toutes les réservations et packs utilisant ce menu (même ceux déja enregistrés)`}
+            onConfirm={() => { setShowConfirm(false); doSave(); }}
+            onCancel={() => setShowConfirm(false)}
+          />
+        )}
       </div>
     </div>
   );
@@ -164,7 +159,7 @@ function CateringReservationForm({ reservation, templates, onClose, onSaved }) {
   }, [reservation.id]);
 
   useEffect(() => {
-    setTotal((form.nombre_personnes || 0) * (form.prix_par_personne || 0));
+    setTotal((form.nombre_personnes || 0) * (Number(form.prix_par_personne) || 0));
   }, [form.nombre_personnes, form.prix_par_personne]);
 
   const applyTemplate = async (templateId) => {
@@ -212,7 +207,6 @@ function CateringReservationForm({ reservation, templates, onClose, onSaved }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 680 }}>
-        {/* Header */}
         <div style={{ marginBottom: 20 }}>
           <h3 className="modal-title" style={{ margin: 0 }}>🍽 Catering — {reservation.client_nom}</h3>
           <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
@@ -221,7 +215,6 @@ function CateringReservationForm({ reservation, templates, onClose, onSaved }) {
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* ÉTAPE 1 : Choisir un menu modèle */}
           <div style={{ background: '#6366f111', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
             <div style={{ fontSize: 12, color: '#6366f1', fontWeight: 700, marginBottom: 10 }}>
               ÉTAPE 1 — Choisir un menu modèle
@@ -245,7 +238,6 @@ function CateringReservationForm({ reservation, templates, onClose, onSaved }) {
             </div>
           </div>
 
-          {/* ÉTAPE 2 : Personnalisation */}
           <div style={{ background: '#10b98111', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
             <div style={{ fontSize: 12, color: '#10b981', fontWeight: 700, marginBottom: 12 }}>
               ÉTAPE 2 — Personnaliser
@@ -263,7 +255,14 @@ function CateringReservationForm({ reservation, templates, onClose, onSaved }) {
               </div>
               <div className="form-group">
                 <label>Prix / personne (DA)</label>
-                <input className="input" type="number" value={form.prix_par_personne} onChange={e => setForm({...form, prix_par_personne: Number(e.target.value)})} />
+                <input
+                  className="input"
+                  type="text"
+                  inputMode="numeric"
+                  value={form.prix_par_personne}
+                  onChange={e => setForm({...form, prix_par_personne: Number(e.target.value.replace(/[^0-9]/g, ''))})}
+                  placeholder="Prix par personne"
+                />
               </div>
             </div>
 
@@ -300,7 +299,6 @@ function CateringReservationForm({ reservation, templates, onClose, onSaved }) {
             </div>
           </div>
 
-          {/* ÉTAPE 3 : Calcul automatique */}
           <div style={{ background: '#f59e0b11', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
             <div style={{ fontSize: 12, color: '#f59e0b', fontWeight: 700, marginBottom: 10 }}>
               ÉTAPE 3 — Calcul automatique
@@ -335,7 +333,6 @@ function CateringReservationForm({ reservation, templates, onClose, onSaved }) {
 // ─── FICHE CUISINE ────────────────────────────────────────────
 function FicheCuisine({ data, onClose }) {
   const { reservation, catering, settings } = data;
-
   const handlePrint = () => window.print();
 
   return (
@@ -365,9 +362,7 @@ function FicheCuisine({ data, onClose }) {
           </div>
 
           <div style={{ background: '#f5f5f5', borderRadius: 8, padding: '12px 16px', marginBottom: 16 }}>
-            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
-              🍽 {catering?.nom_menu}
-            </div>
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>🍽 {catering?.nom_menu}</div>
             <div style={{ fontSize: 13, color: '#555' }}>
               <strong>{catering?.nombre_personnes} personnes</strong> · {catering?.type_repas}
             </div>
@@ -377,49 +372,37 @@ function FicheCuisine({ data, onClose }) {
             {catering?.entrees && (
               <div style={{ border: '1px solid #ddd', borderRadius: 8, padding: 10 }}>
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>🥗 ENTRÉES</div>
-                <div style={{ fontSize: 12, lineHeight: 1.8 }}>
-                  {catering.entrees.split(',').map((e, i) => <div key={i}>• {e.trim()}</div>)}
-                </div>
+                <div style={{ fontSize: 12, lineHeight: 1.8 }}>{catering.entrees.split(',').map((e, i) => <div key={i}>• {e.trim()}</div>)}</div>
               </div>
             )}
             {catering?.plats && (
               <div style={{ border: '1px solid #ddd', borderRadius: 8, padding: 10 }}>
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>🍛 PLATS</div>
-                <div style={{ fontSize: 12, lineHeight: 1.8 }}>
-                  {catering.plats.split(',').map((p, i) => <div key={i}>• {p.trim()}</div>)}
-                </div>
+                <div style={{ fontSize: 12, lineHeight: 1.8 }}>{catering.plats.split(',').map((p, i) => <div key={i}>• {p.trim()}</div>)}</div>
               </div>
             )}
             {catering?.boissons && (
               <div style={{ border: '1px solid #ddd', borderRadius: 8, padding: 10 }}>
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>🥤 BOISSONS</div>
-                <div style={{ fontSize: 12, lineHeight: 1.8 }}>
-                  {catering.boissons.split(',').map((b, i) => <div key={i}>• {b.trim()}</div>)}
-                </div>
+                <div style={{ fontSize: 12, lineHeight: 1.8 }}>{catering.boissons.split(',').map((b, i) => <div key={i}>• {b.trim()}</div>)}</div>
               </div>
             )}
             {catering?.desserts && (
               <div style={{ border: '1px solid #ddd', borderRadius: 8, padding: 10 }}>
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>🍮 DESSERTS</div>
-                <div style={{ fontSize: 12, lineHeight: 1.8 }}>
-                  {catering.desserts.split(',').map((d, i) => <div key={i}>• {d.trim()}</div>)}
-                </div>
+                <div style={{ fontSize: 12, lineHeight: 1.8 }}>{catering.desserts.split(',').map((d, i) => <div key={i}>• {d.trim()}</div>)}</div>
               </div>
             )}
             {catering?.cafe && (
               <div style={{ border: '1px solid #ddd', borderRadius: 8, padding: 10 }}>
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>☕ CAFÉ / THÉ</div>
-                <div style={{ fontSize: 12, lineHeight: 1.8 }}>
-                  {catering.cafe.split(',').map((c, i) => <div key={i}>• {c.trim()}</div>)}
-                </div>
+                <div style={{ fontSize: 12, lineHeight: 1.8 }}>{catering.cafe.split(',').map((c, i) => <div key={i}>• {c.trim()}</div>)}</div>
               </div>
             )}
             {catering?.collation && (
               <div style={{ border: '1px solid #ddd', borderRadius: 8, padding: 10 }}>
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>🥪 COLLATION</div>
-                <div style={{ fontSize: 12, lineHeight: 1.8 }}>
-                  {catering.collation.split(',').map((c, i) => <div key={i}>• {c.trim()}</div>)}
-                </div>
+                <div style={{ fontSize: 12, lineHeight: 1.8 }}>{catering.collation.split(',').map((c, i) => <div key={i}>• {c.trim()}</div>)}</div>
               </div>
             )}
           </div>
@@ -459,8 +442,6 @@ export default function CateringPage() {
   const [ficheData, setFicheData] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
-
-  // ── NOUVEAU : state de recherche ──
   const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
@@ -494,7 +475,6 @@ export default function CateringPage() {
     else toast.error('Aucun catering configuré pour cette réservation');
   };
 
-  // ── NOUVEAU : réservations filtrées ──
   const filteredReservations = reservations.filter(r =>
     r.client_nom?.toLowerCase().includes(search.toLowerCase()) ||
     r.type_fete?.toLowerCase().includes(search.toLowerCase())
@@ -542,10 +522,8 @@ export default function CateringPage() {
         )}
       </div>
 
-      {/* ── TAB : RÉSERVATIONS ── */}
       {tab === 'reservations' && (
         <>
-          {/* ── NOUVEAU : Barre de recherche ── */}
           <div style={{ marginBottom: 12 }}>
             <input
               className="input"
@@ -555,7 +533,6 @@ export default function CateringPage() {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-
           <div className="card">
             <table className="data-table">
               <thead>
@@ -582,9 +559,7 @@ export default function CateringPage() {
                 ))}
               </tbody>
             </table>
-            {reservations.length === 0 && (
-              <div className="empty-state">Aucune réservation active</div>
-            )}
+            {reservations.length === 0 && <div className="empty-state">Aucune réservation active</div>}
             {reservations.length > 0 && filteredReservations.length === 0 && (
               <div className="empty-state">Aucun résultat pour « {search} »</div>
             )}
@@ -592,7 +567,6 @@ export default function CateringPage() {
         </>
       )}
 
-      {/* ── TAB : MENUS MODÈLES ── */}
       {tab === 'menus' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {templates.map(t => (
@@ -612,42 +586,12 @@ export default function CateringPage() {
               </div>
 
               <div style={{ padding: '12px 20px' }}>
-                {t.entrees && (
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 3 }}>🥗 ENTRÉES</div>
-                    <div style={{ fontSize: 12 }}>{t.entrees}</div>
-                  </div>
-                )}
-                {t.plats && (
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 3 }}>🍛 PLATS</div>
-                    <div style={{ fontSize: 12 }}>{t.plats}</div>
-                  </div>
-                )}
-                {t.boissons && (
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 3 }}>🥤 BOISSONS</div>
-                    <div style={{ fontSize: 12 }}>{t.boissons}</div>
-                  </div>
-                )}
-                {t.desserts && (
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 3 }}>🍮 DESSERTS</div>
-                    <div style={{ fontSize: 12 }}>{t.desserts}</div>
-                  </div>
-                )}
-                {t.cafe && (
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 3 }}>☕ CAFÉ / THÉ</div>
-                    <div style={{ fontSize: 12 }}>{t.cafe}</div>
-                  </div>
-                )}
-                {t.collation && (
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 3 }}>🥪 COLLATION</div>
-                    <div style={{ fontSize: 12 }}>{t.collation}</div>
-                  </div>
-                )}
+                {t.entrees && <div style={{ marginBottom: 8 }}><div style={{ fontSize: 11, color: '#64748b', marginBottom: 3 }}>🥗 ENTRÉES</div><div style={{ fontSize: 12 }}>{t.entrees}</div></div>}
+                {t.plats && <div style={{ marginBottom: 8 }}><div style={{ fontSize: 11, color: '#64748b', marginBottom: 3 }}>🍛 PLATS</div><div style={{ fontSize: 12 }}>{t.plats}</div></div>}
+                {t.boissons && <div style={{ marginBottom: 8 }}><div style={{ fontSize: 11, color: '#64748b', marginBottom: 3 }}>🥤 BOISSONS</div><div style={{ fontSize: 12 }}>{t.boissons}</div></div>}
+                {t.desserts && <div style={{ marginBottom: 8 }}><div style={{ fontSize: 11, color: '#64748b', marginBottom: 3 }}>🍮 DESSERTS</div><div style={{ fontSize: 12 }}>{t.desserts}</div></div>}
+                {t.cafe && <div style={{ marginBottom: 8 }}><div style={{ fontSize: 11, color: '#64748b', marginBottom: 3 }}>☕ CAFÉ / THÉ</div><div style={{ fontSize: 12 }}>{t.cafe}</div></div>}
+                {t.collation && <div style={{ marginBottom: 8 }}><div style={{ fontSize: 11, color: '#64748b', marginBottom: 3 }}>🥪 COLLATION</div><div style={{ fontSize: 12 }}>{t.collation}</div></div>}
                 {t.nb_utilisations > 0 && (
                   <div style={{ fontSize: 11, color: '#6366f1', marginTop: 8 }}>
                     ✓ Utilisé {t.nb_utilisations} fois · {formatDA(t.prix_moyen)}/pers. en moyenne
@@ -669,7 +613,6 @@ export default function CateringPage() {
         </div>
       )}
 
-      {/* Modals */}
       {showMenuForm && (
         <MenuTemplateForm
           editData={editTemplate}
@@ -688,10 +631,7 @@ export default function CateringPage() {
       )}
 
       {ficheData && (
-        <FicheCuisine
-          data={ficheData}
-          onClose={() => setFicheData(null)}
-        />
+        <FicheCuisine data={ficheData} onClose={() => setFicheData(null)} />
       )}
 
       {confirm && <ConfirmModal message={confirm.message} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} />}
@@ -738,15 +678,9 @@ function ReservationCateringRow({ reservation, templates, onEdit, onFiche, onDel
       <td>{cat ? <span className="fw-bold text-green">{formatDA(cat.total_catering)}</span> : '—'}</td>
       <td>
         <div className="action-buttons">
-          {cat && (
-            <button className="btn btn-danger btn-sm" onClick={handleDelete}>🗑 Supprimer catering</button>
-          )}
-          <button className="btn btn-primary btn-sm" onClick={onEdit}>
-            {cat ? '✏ Modifier' : '+ Configurer'}
-          </button>
-          {cat && (
-            <button className="btn btn-ghost btn-sm" onClick={onFiche} title="Fiche cuisine">🖨 Imprimer le catering</button>
-          )}
+          {cat && <button className="btn btn-danger btn-sm" onClick={handleDelete}>🗑 Supprimer catering</button>}
+          <button className="btn btn-primary btn-sm" onClick={onEdit}>{cat ? '✏ Modifier' : '+ Configurer'}</button>
+          {cat && <button className="btn btn-ghost btn-sm" onClick={onFiche} title="Fiche cuisine">🖨 Imprimer le catering</button>}
         </div>
       </td>
     </tr>

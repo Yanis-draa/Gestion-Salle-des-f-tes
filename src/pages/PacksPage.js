@@ -4,11 +4,13 @@ import toast from 'react-hot-toast';
 
 const SERVICES_SUGGESTIONS = [
   'DJ', 'Décoration', 'Éclairage', 'Photographe', 'Vidéaste',
-  'Sonorisation', 'Fleurs', 'Voiture mariée', 'Feu d\'artifice',
+  'Sonorisation', 'Fleurs', 'Voiture mariée', "Feu d'artifice",
   'Animation enfants', 'Karaoké', 'Sécurité', 'Parking'
 ];
 
 const PACK_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#14b8a6'];
+
+
 
 function ConfirmModal({ message, onConfirm, onCancel }) {
   return (
@@ -26,56 +28,115 @@ function ConfirmModal({ message, onConfirm, onCancel }) {
 }
 
 function PackFormModal({ editData, templates, onClose, onSaved }) {
-  const [form, setForm] = useState({ nom: '', prix: '', menu_template_id: '', services: [], description: '' });
-  const [serviceInput, setServiceInput] = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [form, setForm] = useState({
+    nom: '', prix: '', menu_template_id: '', services: [], description: ''
+  });
+  // Ligne en cours de saisie pour un nouveau service
+  const [serviceNom, setServiceNom] = useState('');
+  const [servicePrix, setServicePrix] = useState('');
 
   useEffect(() => {
-    if (editData) setForm({ ...editData, menu_template_id: editData.menu_template_id || '', prix: editData.prix || '' });
+    if (editData) {
+      setForm({
+        ...editData,
+        menu_template_id: editData.menu_template_id || '',
+        prix: editData.prix || '',
+        // services = [{ nom, prix }]
+        services: editData.services || [],
+      });
+    }
   }, [editData]);
 
-  const addService = (s) => {
-    const val = s || serviceInput.trim();
-    if (!val) return;
-    if (!form.services.includes(val)) setForm(f => ({ ...f, services: [...f.services, val] }));
-    setServiceInput('');
+  // Total automatique = prix saisi + somme des services
+  const totalServices = form.services.reduce((s, sv) => s + (Number(sv.prix) || 0), 0);
+
+  const addService = (nom) => {
+    const n = (nom || serviceNom).trim();
+    if (!n) return;
+    if (form.services.some(s => s.nom === n)) {
+      toast.error('Ce service existe déjà'); return;
+    }
+    setForm(f => ({
+      ...f,
+      services: [...f.services, { nom: n, prix: Number(servicePrix) || 0 }]
+    }));
+    setServiceNom('');
+    setServicePrix('');
   };
 
-  const removeService = (s) => setForm(f => ({ ...f, services: f.services.filter(x => x !== s) }));
+  const removeService = (nom) =>
+    setForm(f => ({ ...f, services: f.services.filter(s => s.nom !== nom) }));
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.nom || !form.prix) { toast.error('Nom et prix obligatoires'); return; }
-    const res = editData
-      ? await api.packs.update(editData.id, form)
-      : await api.packs.create(form);
-    if (res.success) { toast.success(editData ? 'Pack modifié' : 'Pack créé'); onSaved(); }
-    else toast.error(res.error);
-  };
+  const updateServicePrix = (nom, prix) =>
+    setForm(f => ({
+      ...f,
+      services: f.services.map(s => s.nom === nom ? { ...s, prix: Number(prix) || 0 } : s)
+    }));
+
+    const doSave = async () => {
+  const res = editData
+    ? await api.packs.update(editData.id, form)
+    : await api.packs.create(form);
+
+  if (res.success) {
+    toast.success(editData ? 'Pack modifié' : 'Pack créé');
+    onSaved();
+  } else {
+    toast.error(res.error);
+  }
+};
+
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (!form.nom || !form.prix) {
+    toast.error('Nom et prix obligatoires');
+    return;
+  }
+
+  if (editData) {
+    setShowConfirm(true);
+    return;
+  }
+
+  await doSave();
+};
 
   const selectedTemplate = templates.find(t => String(t.id) === String(form.menu_template_id));
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 620 }}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 640 }}>
         <h3 className="modal-title">{editData ? '✏ Modifier pack' : '📦 Nouveau pack'}</h3>
         <form onSubmit={handleSubmit}>
           <div className="form-grid-2">
             <div className="form-group">
               <label>Nom du pack *</label>
-              <input className="input" value={form.nom} onChange={e => setForm({...form, nom: e.target.value})} placeholder="Pack Gold, Pack Premium..." required />
+              <input className="input" value={form.nom}
+                onChange={e => setForm({...form, nom: e.target.value})}
+                placeholder="Pack Gold, Pack Premium..." required />
             </div>
             <div className="form-group">
-              <label>Prix (DA) *</label>
-              <input className="input" type="number" value={form.prix} onChange={e => setForm({...form, prix: e.target.value})} placeholder="800000" required />
+              <label>Prix de base (DA) *</label>
+              <input className="input" type="text" inputMode="numeric"
+                value={form.prix}
+                onChange={e => setForm({...form, prix: e.target.value.replace(/[^0-9]/g, '')})}
+                placeholder="800000" required />
             </div>
           </div>
+
           <div className="form-group">
             <label>Description</label>
-            <input className="input" value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Description du pack..." />
+            <input className="input" value={form.description}
+              onChange={e => setForm({...form, description: e.target.value})}
+              placeholder="Description du pack..." />
           </div>
+
           <div className="form-group">
             <label>🍽 Catering inclus</label>
-            <select className="input" value={form.menu_template_id} onChange={e => setForm({...form, menu_template_id: e.target.value})}>
+            <select className="input" value={form.menu_template_id}
+              onChange={e => setForm({...form, menu_template_id: e.target.value})}>
               <option value="">— Aucun catering —</option>
               {templates.map(t => (
                 <option key={t.id} value={t.id}>{t.nom} — {formatDA(t.prix_par_personne)}/pers.</option>
@@ -88,39 +149,117 @@ function PackFormModal({ editData, templates, onClose, onSaved }) {
               </div>
             )}
           </div>
+
+          {/* ── Services avec prix ── */}
           <div className="form-group">
             <label>✨ Services inclus</label>
+
+            {/* Liste des services ajoutés */}
             {form.services.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+              <div style={{ marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {form.services.map(s => (
-                  <span key={s} style={{ background: '#10b98122', color: '#10b981', border: '1px solid #10b98133', borderRadius: 20, padding: '3px 10px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {s}
-                    <button type="button" onClick={() => removeService(s)} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>✕</button>
-                  </span>
+                  <div key={s.nom} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    background: '#10b98111', border: '1px solid #10b98133',
+                    borderRadius: 10, padding: '6px 10px'
+                  }}>
+                    <span style={{ flex: 1, fontWeight: 600, fontSize: 13, color: '#10b981' }}>{s.nom}</span>
+                    <input
+                      type="text" inputMode="numeric"
+                      value={s.prix || ''}
+                      onChange={e => updateServicePrix(s.nom, e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="Prix DA"
+                      style={{
+                        width: 110, background: '#ffffff11', border: '1px solid #10b98133',
+                        borderRadius: 6, padding: '4px 8px', fontSize: 12,
+                        color: '#10b981', fontWeight: 600, textAlign: 'right'
+                      }}
+                    />
+                    <span style={{ fontSize: 11, color: '#64748b' }}>DA</span>
+                    <button type="button" onClick={() => removeService(s.nom)}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>✕</button>
+                  </div>
                 ))}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 12, color: '#10b981', fontWeight: 700, paddingRight: 4 }}>
+                  Total services : {formatDA(totalServices)}
+                </div>
               </div>
             )}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input className="input" style={{ flex: 1 }} value={serviceInput}
-                onChange={e => setServiceInput(e.target.value)}
+
+            {/* Saisie nouveau service */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <input className="input" style={{ flex: 2 }}
+                value={serviceNom}
+                onChange={e => setServiceNom(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addService(); } }}
-                placeholder="Saisir un service ou choisir ci-dessous..." />
+                placeholder="Nom du service..." />
+              <input
+                type="text" inputMode="numeric"
+                className="input" style={{ flex: 1 }}
+                value={servicePrix}
+                onChange={e => setServicePrix(e.target.value.replace(/[^0-9]/g, ''))}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addService(); } }}
+                placeholder="Prix DA" />
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => addService()}>+ Ajouter</button>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-              {SERVICES_SUGGESTIONS.filter(s => !form.services.includes(s)).map(s => (
-                <button key={s} type="button" onClick={() => addService(s)}
-                  style={{ background: '#ffffff08', border: '1px solid #ffffff11', borderRadius: 20, padding: '2px 10px', fontSize: 11, color: '#94a3b8', cursor: 'pointer' }}>
+
+            {/* Suggestions rapides */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {SERVICES_SUGGESTIONS.filter(s => !form.services.some(sv => sv.nom === s)).map(s => (
+                <button key={s} type="button"
+                  onClick={() => { setServiceNom(s); }}
+                  style={{
+                    background: '#ffffff08', border: '1px solid #ffffff11',
+                    borderRadius: 20, padding: '2px 10px', fontSize: 11,
+                    color: '#94a3b8', cursor: 'pointer'
+                  }}>
                   + {s}
                 </button>
               ))}
             </div>
           </div>
+
+          {/* Récap total */}
+          {(Number(form.prix) > 0 || totalServices > 0) && (
+            <div style={{ background: '#6366f111', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ color: '#64748b' }}>Prix de base</span>
+                <span>{formatDA(Number(form.prix) || 0)}</span>
+              </div>
+              {totalServices > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ color: '#64748b' }}>Services ({form.services.length})</span>
+                  <span>{formatDA(totalServices)}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, borderTop: '1px solid #6366f133', paddingTop: 6, marginTop: 4 }}>
+                <span>Total pack</span>
+                <span style={{ color: '#6366f1', fontSize: 15 }}>{formatDA((Number(form.prix) || 0) + totalServices)}</span>
+              </div>
+            </div>
+          )}
+
           <div className="modal-actions">
             <button type="button" className="btn btn-ghost" onClick={onClose}>Annuler</button>
             <button type="submit" className="btn btn-primary">✅ {editData ? 'Modifier' : 'Créer le pack'}</button>
           </div>
         </form>
+        {showConfirm && (
+  <ConfirmModal
+    message={`Modifier le pack "${form.nom}" ?
+
+Ces modifications seront appliquées uniquement aux futures réservations.
+
+Les réservations déjà enregistrées avec ce pack ne seront pas modifiées.
+
+Voulez-vous continuer ?`}
+    onConfirm={() => {
+      setShowConfirm(false);
+      doSave();
+    }}
+    onCancel={() => setShowConfirm(false)}
+  />
+)}
       </div>
     </div>
   );
@@ -162,7 +301,9 @@ export default function PacksPage() {
   return (
     <div className="page-container">
       <div className="page-toolbar">
-        <input className="search-input" style={{ width: 280 }} placeholder="🔍 Rechercher un pack..." value={search} onChange={e => setSearch(e.target.value)} />
+        <input className="search-input" style={{ width: 280 }}
+          placeholder="🔍 Rechercher un pack..."
+          value={search} onChange={e => setSearch(e.target.value)} />
         <div style={{ display: 'flex', gap: 8 }}>
           {packs.length > 0 && (
             <button className="btn btn-danger" onClick={() => setConfirm({
@@ -192,6 +333,7 @@ export default function PacksPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
           {filtered.map((p, i) => {
             const color = PACK_COLORS[i % PACK_COLORS.length];
+            const totalServices = (p.services || []).reduce((s, sv) => s + (Number(sv.prix) || 0), 0);
             return (
               <div key={p.id} className="card" style={{ padding: 0, overflow: 'hidden', border: `1px solid ${color}33` }}>
                 <div style={{ background: `linear-gradient(135deg, ${color}22, ${color}11)`, padding: '20px 20px 16px', borderBottom: `1px solid ${color}22` }}>
@@ -201,11 +343,12 @@ export default function PacksPage() {
                       {p.description && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{p.description}</div>}
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 20, fontWeight: 800, color }}>{formatDA(p.prix)}</div>
-                      <div style={{ fontSize: 11, color: 'var(--muted)' }}>prix fixe</div>
+                      <div style={{ fontSize: 20, fontWeight: 800, color }}>{formatDA(Number(p.prix) + totalServices)}</div>
+                      <div style={{ fontSize: 11, color: 'var(--muted)' }}>prix total</div>
                     </div>
                   </div>
                 </div>
+
                 <div style={{ padding: '14px 20px' }}>
                   {p.catering_nom ? (
                     <div style={{ marginBottom: 12 }}>
@@ -219,19 +362,31 @@ export default function PacksPage() {
                   ) : (
                     <div style={{ marginBottom: 12, color: 'var(--muted)', fontSize: 12 }}>🍽 Aucun catering inclus</div>
                   )}
+
                   {p.services?.length > 0 && (
                     <div>
                       <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>✨ Services</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {p.services.map(s => (
-                          <span key={s} style={{ background: color + '11', color, border: `1px solid ${color}33`, borderRadius: 20, padding: '2px 10px', fontSize: 12 }}>{s}</span>
+                          <div key={s.nom} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                            <span style={{ color, fontWeight: 500 }}>• {s.nom}</span>
+                            {s.prix > 0 && <span style={{ color: 'var(--muted)', fontWeight: 600 }}>{formatDA(s.prix)}</span>}
+                          </div>
                         ))}
+                        {totalServices > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, borderTop: `1px solid ${color}22`, paddingTop: 4, marginTop: 2 }}>
+                            <span style={{ color: 'var(--muted)' }}>Total services</span>
+                            <span style={{ color, fontWeight: 700 }}>{formatDA(totalServices)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
                 </div>
+
                 <div style={{ padding: '10px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
-                  <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => { setEditData(p); setShowForm(true); }}>✏ Modifier</button>
+                  <button className="btn btn-ghost btn-sm" style={{ flex: 1 }}
+                    onClick={() => { setEditData(p); setShowForm(true); }}>✏ Modifier</button>
                   <button className="btn btn-danger btn-sm" onClick={() => handleDelete(p)}>🗑</button>
                 </div>
               </div>
@@ -240,7 +395,14 @@ export default function PacksPage() {
         </div>
       )}
 
-      {showForm && <PackFormModal editData={editData} templates={templates} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load(); }} />}
+      {showForm && (
+        <PackFormModal
+          editData={editData}
+          templates={templates}
+          onClose={() => setShowForm(false)}
+          onSaved={() => { setShowForm(false); load(); }}
+        />
+      )}
       {confirm && <ConfirmModal message={confirm.message} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} />}
     </div>
   );

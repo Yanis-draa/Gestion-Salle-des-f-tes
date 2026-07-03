@@ -8,7 +8,7 @@ const POSTE_COLORS = {
   'Nettoyage': '#14b8a6', 'Décoration': '#8b5cf6', 'Sécurité': '#ef4444',
   'Photographe': '#3b82f6', 'Manager': '#10b981', 'Autres': '#64748b',
 };
-
+const PACK_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#14b8a6'];
 const ITEMS_PER_PAGE = 7;
 
 // ─── CONFIRM MODAL ────────────────────────────────────────────
@@ -26,7 +26,6 @@ function ConfirmModal({ message, onConfirm, onCancel }) {
     </div>
   );
 }
-
 
 // ─── DATE PICKER WITH AVAILABILITY ───────────────────────────
 function DatePickerWithAvailability({ value, salle, editId, onChange }) {
@@ -54,7 +53,6 @@ function DatePickerWithAvailability({ value, salle, editId, onChange }) {
     const d = new Date(y, m, 1).getDay();
     return d === 0 ? 6 : d - 1;
   };
-
   const formatDateStr = (y, m, d) => `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 
   const prevMonth = () => {
@@ -77,19 +75,16 @@ function DatePickerWithAvailability({ value, salle, editId, onChange }) {
         <span style={{ fontWeight: 700, fontSize: 15 }}>{MONTHS_FR[viewMonth]} {viewYear}</span>
         <button type="button" className="btn btn-ghost btn-sm" onClick={nextMonth}>›</button>
       </div>
-
       <div style={{ display: 'flex', gap: 16, marginBottom: 10, fontSize: 11 }}>
         <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#2dad34', marginRight: 4 }}></span>Disponible</span>
         <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#ef4444', marginRight: 4 }}></span>Réservé</span>
         <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#6366f1', marginRight: 4 }}></span>Sélectionné</span>
       </div>
-
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
         {DAYS_FR.map(d => (
           <div key={d} style={{ textAlign: 'center', fontSize: 11, color: '#64748b', fontWeight: 600, padding: '2px 0' }}>{d}</div>
         ))}
       </div>
-
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
         {Array.from({ length: firstDay }).map((_, i) => <div key={`e-${i}`} />)}
         {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -99,22 +94,16 @@ function DatePickerWithAvailability({ value, salle, editId, onChange }) {
           const isSelected = value === dateStr;
           const isPast = dateStr < todayStr;
           const isToday = dateStr === todayStr;
-
           return (
-            <button
-              key={day}
-              type="button"
-              disabled={isBusy || isPast}
+            <button key={day} type="button" disabled={isBusy || isPast}
               onClick={() => !isBusy && !isPast && onChange(dateStr)}
               style={{
                 padding: '6px 2px', borderRadius: 8, border: 'none', cursor: isBusy || isPast ? 'not-allowed' : 'pointer',
                 background: isSelected ? '#6366f1' : isBusy ? '#ef444422' : isPast ? 'transparent' : '#16b91011',
                 color: isSelected ? '#fff' : isBusy ? '#ef4444' : isPast ? '#648b69' : '#2dad34',
-                fontWeight: isSelected || isToday ? 700 : 400,
-                fontSize: 13,
+                fontWeight: isSelected || isToday ? 700 : 400, fontSize: 13,
                 outline: isToday && !isSelected ? '2px solid #6366f1' : 'none',
-                opacity: isPast ? 0.5 : 1,
-                transition: 'all 0.1s',
+                opacity: isPast ? 0.5 : 1, transition: 'all 0.1s',
               }}
               title={isBusy ? `${salle} réservée ce jour` : isPast ? 'Date passée' : 'Disponible'}
             >
@@ -123,7 +112,6 @@ function DatePickerWithAvailability({ value, salle, editId, onChange }) {
           );
         })}
       </div>
-
       {value && (
         <div style={{ marginTop: 12, padding: '8px 12px', background: '#6366f122', borderRadius: 8, fontSize: 13, color: '#6366f1', fontWeight: 600, textAlign: 'center' }}>
           ✓ Sélectionné : {new Date(value + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
@@ -160,23 +148,14 @@ function EmployeeSelector({ reservationId, onClose, onUpdated }) {
     setSaving(emp.id);
     if (isAssigned(emp.id)) {
       const res = await api.employees.removeFromReservation(emp.id, reservationId);
-      if (res.success) {
-        toast.success(`${emp.nom} retiré`);
-        await load();
-        onUpdated();
-      } else toast.error(res.error);
+      if (res.success) { toast.success(`${emp.nom} retiré`); await load(); onUpdated(); }
+      else toast.error(res.error);
     } else {
       const res = await api.employees.assignToReservation({
-        reservation_id: reservationId,
-        employee_id: emp.id,
-        role: emp.poste,
-        cout: emp.prix_par_jour,
+        reservation_id: reservationId, employee_id: emp.id, role: emp.poste, cout: emp.prix_par_jour,
       });
-      if (res.success) {
-        toast.success(`${emp.nom} affecté`);
-        await load();
-        onUpdated();
-      } else toast.error(res.error);
+      if (res.success) { toast.success(`${emp.nom} affecté`); await load(); onUpdated(); }
+      else toast.error(res.error);
     }
     setSaving(null);
   };
@@ -187,9 +166,7 @@ function EmployeeSelector({ reservationId, onClose, onUpdated }) {
     const matchPoste = filterPoste === 'all' || e.poste === filterPoste;
     return matchSearch && matchPoste;
   });
-
   const totalCout = assigned.reduce((s, e) => s + (e.cout || e.prix_par_jour || 0), 0);
-
   const byPoste = assigned.reduce((acc, e) => {
     if (!acc[e.poste]) acc[e.poste] = [];
     acc[e.poste].push(e);
@@ -203,7 +180,6 @@ function EmployeeSelector({ reservationId, onClose, onUpdated }) {
           <h3 className="modal-title" style={{ margin: 0 }}>👔 Affecter des employés</h3>
           <button className="btn btn-ghost btn-sm" onClick={onClose}>✕ Fermer</button>
         </div>
-
         {assigned.length > 0 && (
           <div style={{ background: '#ffffff08', borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
             <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>ÉQUIPE AFFECTÉE ({assigned.length} employé{assigned.length > 1 ? 's' : ''})</div>
@@ -224,13 +200,10 @@ function EmployeeSelector({ reservationId, onClose, onUpdated }) {
                 ))}
                 {assigned.length > 8 && <div style={{ width: 28, height: 28, borderRadius: 8, background: '#ffffff11', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#64748b' }}>+{assigned.length - 8}</div>}
               </div>
-              <div style={{ fontWeight: 700, color: '#ef4444', fontSize: 15 }}>
-                Coût total : {formatDA(totalCout)}
-              </div>
+              <div style={{ fontWeight: 700, color: '#ef4444', fontSize: 15 }}>Coût total : {formatDA(totalCout)}</div>
             </div>
           </div>
         )}
-
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
           <input className="search-input" style={{ flex: 1, minWidth: 160 }} placeholder="🔍 Chercher un employé..." value={search} onChange={e => setSearch(e.target.value)} />
           <select className="input" style={{ width: 'auto' }} value={filterPoste} onChange={e => setFilterPoste(e.target.value)}>
@@ -238,7 +211,6 @@ function EmployeeSelector({ reservationId, onClose, onUpdated }) {
             {postes.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
         </div>
-
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {loading ? <div className="empty-state">Chargement...</div> : (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -247,8 +219,7 @@ function EmployeeSelector({ reservationId, onClose, onUpdated }) {
                 const color = POSTE_COLORS[emp.poste] || '#6366f1';
                 const isSaving = saving === emp.id;
                 return (
-                  <div key={emp.id}
-                    onClick={() => !isSaving && handleToggle(emp)}
+                  <div key={emp.id} onClick={() => !isSaving && handleToggle(emp)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
                       borderRadius: 12, cursor: isSaving ? 'wait' : 'pointer',
@@ -276,7 +247,6 @@ function EmployeeSelector({ reservationId, onClose, onUpdated }) {
           )}
           {filtered.length === 0 && !loading && <div className="empty-state">Aucun employé trouvé</div>}
         </div>
-
         <div className="modal-actions" style={{ marginTop: 16 }}>
           <button className="btn btn-primary" onClick={onClose}>✅ Valider ({assigned.length} employé{assigned.length > 1 ? 's' : ''})</button>
         </div>
@@ -379,19 +349,13 @@ function ReservationDetailModal({ reservationId, onClose, onEdit, onRefreshList 
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <span style={{ fontSize: 13, fontWeight: 600 }}>👔 Équipe ({data.employees?.length || 0})</span>
-                <button className="btn btn-primary btn-sm" onClick={() => setShowEmployeeSelector(true)}>
-                  + Gérer équipe
-                </button>
+                <button className="btn btn-primary btn-sm" onClick={() => setShowEmployeeSelector(true)}>+ Gérer équipe</button>
               </div>
-
               {data.employees?.length === 0 ? (
                 <div style={{ background: '#ffffff05', borderRadius: 12, padding: '20px', textAlign: 'center', color: '#64748b', fontSize: 13 }}>
                   <div style={{ fontSize: 24, marginBottom: 8 }}>👔</div>
-                  Aucun employé affecté
-                  <br />
-                  <button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={() => setShowEmployeeSelector(true)}>
-                    + Affecter des employés
-                  </button>
+                  Aucun employé affecté<br />
+                  <button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={() => setShowEmployeeSelector(true)}>+ Affecter des employés</button>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -442,7 +406,6 @@ function ReservationDetailModal({ reservationId, onClose, onEdit, onRefreshList 
                   </div>
                 )}
               </div>
-
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>📉 Dépenses</div>
                 {data.expenses?.length === 0 ? (
@@ -461,7 +424,6 @@ function ReservationDetailModal({ reservationId, onClose, onEdit, onRefreshList 
                   </div>
                 )}
               </div>
-
               <div style={{ background: '#ffffff05', borderRadius: 10, padding: '10px 14px', fontSize: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span className="text-muted">Invités</span><span>{data.nombre_invites}</span>
@@ -491,7 +453,6 @@ function ReservationDetailModal({ reservationId, onClose, onEdit, onRefreshList 
           onUpdated={() => { load(); onRefreshList && onRefreshList(); }}
         />
       )}
-
       {confirm && <ConfirmModal message={confirm.message} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} />}
     </>
   );
@@ -514,6 +475,19 @@ function ReservationFormModal({ editData, clients, onClose, onSaved, onNavigateT
   }, [editData]);
 
   useEffect(() => {
+    if (editData?.pack_id) {
+      setTypeRes('pack');
+    }
+  }, [editData]);
+
+  useEffect(() => {
+    if (typeRes === 'pack' && editData?.pack_id && packs.length > 0 && !selectedPack) {
+      const found = packs.find(p => p.id === editData.pack_id);
+      if (found) setSelectedPack(found);
+    }
+  }, [typeRes, editData, packs, selectedPack]);
+
+  useEffect(() => {
     if (typeRes === 'pack') {
       setLoadingPacks(true);
       api.packs.getAll().then(res => {
@@ -523,21 +497,10 @@ function ReservationFormModal({ editData, clients, onClose, onSaved, onNavigateT
     }
   }, [typeRes]);
 
-  useEffect(() => {
-    if (!editData && typeRes === 'normale') {
-      const avance = Number(form.avance || 0);
-      const total = Number(form.prix_total || 0);
-      if (total > 0 && avance >= total) {
-        setForm(f => ({ ...f, statut: 'confirmed' }));
-      } else {
-        setForm(f => ({ ...f, statut: 'pending' }));
-      }
-    }
-  }, [form.avance, form.prix_total]);
-
   const handlePackSelect = (pack) => {
     setSelectedPack(pack);
-    setForm(f => ({ ...f, prix_total: String(pack.prix) }));
+    const totalPack = Number(pack.prix) + (pack.services || []).reduce((s, sv) => s + (Number(sv.prix) || 0), 0);
+    setForm(f => ({ ...f, prix_total: String(totalPack) }));
   };
 
   const handleSubmit = async (e) => {
@@ -552,27 +515,45 @@ function ReservationFormModal({ editData, clients, onClose, onSaved, onNavigateT
       const conflict = await api.reservations.checkConflict(form.date_evenement);
       if (conflict.conflict) { toast.error('Cette salle est déjà réservée à cette date !'); return; }
     }
+
     const res = editData
-      ? await api.reservations.update(editData.id, form)
-      : await api.reservations.create({ ...form, pack_id: selectedPack?.id || null });
+      ? await api.reservations.update(editData.id, { ...form, pack_id: selectedPack?.id || null })
+      : await api.reservations.create({ ...form, pack_id: selectedPack?.id || null, services: selectedPack?.services || [] });
 
     if (res.success) {
-      if (!editData && selectedPack?.menu_template_id && res.id) {
-        const catRes = await api.catering.applyTemplate(res.id, selectedPack.menu_template_id);
+      const resId = editData ? editData.id : res.id;
+
+      if (selectedPack?.menu_template_id) {
+        await api.catering.delete(resId);
+        const catRes = await api.catering.applyTemplate(resId, selectedPack.menu_template_id);
         if (catRes.success) {
-          await api.catering.save(res.id, {
+          await api.catering.save(resId, {
             ...catRes.data,
             nombre_personnes: Number(form.nombre_invites) || 0,
             total_catering: (Number(form.nombre_invites) || 0) * catRes.data.prix_par_personne,
           });
         }
+      } else if (typeRes === 'normale' && editData) {
+        await api.catering.delete(resId);
       }
-      toast.success(editData ? 'Réservation modifiée' : 'Réservation créée');
-      onSaved(res.id);
-    } else toast.error(res.error || 'Erreur');
-  };
 
-  const PACK_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#14b8a6'];
+     if (editData && (typeRes === 'normale' || (typeRes === 'pack' && selectedPack))) {
+        await api.reservations.deletePackExpenses(resId);
+        if (selectedPack?.services?.length > 0) {
+          for (const service of selectedPack.services) {
+            if (service.prix > 0) {
+              await api.reservations.addExpense(resId, 'Services', service.nom, service.prix);
+            }
+          }
+        }
+      }
+
+      toast.success(editData ? 'Réservation modifiée' : 'Réservation créée');
+      onSaved(resId);
+    } else {
+      toast.error(res.error || 'Erreur');
+    }
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -580,44 +561,47 @@ function ReservationFormModal({ editData, clients, onClose, onSaved, onNavigateT
         <h3 className="modal-title">{editData ? 'Modifier réservation' : 'Nouvelle réservation'}</h3>
         <form onSubmit={handleSubmit}>
 
-          {!editData && (
-            <div className="form-group" style={{ marginBottom: 20 }}>
-              <label>Type de réservation</label>
-              <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-                <button type="button"
-                  onClick={() => { setTypeRes('normale'); setSelectedPack(null); setForm(f => ({ ...f, prix_total: '' })); }}
-                  style={{
-                    flex: 1, padding: '10px', borderRadius: 10, cursor: 'pointer',
-                    border: `2px solid ${typeRes === 'normale' ? '#6366f1' : '#ffffff11'}`,
-                    background: typeRes === 'normale' ? '#6366f122' : '#ffffff05',
-                    color: typeRes === 'normale' ? '#6366f1' : '#94a3b8',
-                    fontWeight: typeRes === 'normale' ? 700 : 400, fontSize: 14,
-                  }}>
-                  🎉 Réservation normale
-                </button>
-                <button type="button"
-                  onClick={() => setTypeRes('pack')}
-                  style={{
-                    flex: 1, padding: '10px', borderRadius: 10, cursor: 'pointer',
-                    border: `2px solid ${typeRes === 'pack' ? '#10b981' : '#ffffff11'}`,
-                    background: typeRes === 'pack' ? '#10b98122' : '#ffffff05',
-                    color: typeRes === 'pack' ? '#10b981' : '#94a3b8',
-                    fontWeight: typeRes === 'pack' ? 700 : 400, fontSize: 14,
-                  }}>
-                  📦 Choisir un pack
-                </button>
-              </div>
+          {/* ── Type de réservation (toujours visible) ── */}
+          <div className="form-group" style={{ marginBottom: 20 }}>
+            <label>Type de réservation</label>
+            <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+              <button type="button"
+                onClick={() => { setTypeRes('normale'); setSelectedPack(null); setForm(f => ({ ...f, prix_total: '' })); }}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: 10, cursor: 'pointer',
+                  border: `2px solid ${typeRes === 'normale' ? '#6366f1' : '#ffffff11'}`,
+                  background: typeRes === 'normale' ? '#6366f122' : '#ffffff05',
+                  color: typeRes === 'normale' ? '#6366f1' : '#94a3b8',
+                  fontWeight: typeRes === 'normale' ? 700 : 400, fontSize: 14,
+                }}>
+                🎉 Réservation normale
+              </button>
+              <button type="button"
+                onClick={() => setTypeRes('pack')}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: 10, cursor: 'pointer',
+                  border: `2px solid ${typeRes === 'pack' ? '#10b981' : '#ffffff11'}`,
+                  background: typeRes === 'pack' ? '#10b98122' : '#ffffff05',
+                  color: typeRes === 'pack' ? '#10b981' : '#94a3b8',
+                  fontWeight: typeRes === 'pack' ? 700 : 400, fontSize: 14,
+                }}>
+                📦 Choisir un pack
+              </button>
             </div>
-          )}
+          </div>
 
-          {typeRes === 'pack' && !editData && (
+          {/* ── Sélection pack ── */}
+          {typeRes === 'pack' && (
             <div className="form-group" style={{ marginBottom: 20 }}>
               <label>Sélectionner un pack</label>
               {loadingPacks ? (
                 <div style={{ color: '#64748b', padding: '10px 0' }}>Chargement...</div>
               ) : packs.length === 0 ? (
                 <div style={{ color: '#64748b', fontSize: 13, padding: '10px 0' }}>
-                  Aucun pack disponible — <button type="button" className="btn btn-ghost btn-sm" onClick={() => { onClose(); onNavigateToPacks && onNavigateToPacks(); }} style={{ color: '#6366f1' }}>→ Aller créer un pack</button>
+                  Aucun pack disponible —{' '}
+                  <button type="button" className="btn btn-ghost btn-sm"
+                    onClick={() => { onClose(); onNavigateToPacks && onNavigateToPacks(); }}
+                    style={{ color: '#6366f1' }}>→ Aller créer un pack</button>
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
@@ -634,31 +618,32 @@ function ReservationFormModal({ editData, clients, onClose, onSaved, onNavigateT
                         }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div style={{ fontWeight: 700, fontSize: 14 }}>📦 {p.nom}</div>
-                          <div style={{ fontWeight: 800, color, fontSize: 14 }}>{formatDA(p.prix)}</div>
+                          <div style={{ fontWeight: 800, color, fontSize: 14 }}>
+                            {formatDA(Number(p.prix) + (p.services || []).reduce((s, sv) => s + (Number(sv.prix) || 0), 0))}
+                          </div>
                         </div>
-                        {p.catering_nom && (
-                          <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>🍽 {p.catering_nom}</div>
-                        )}
+                        {p.catering_nom && <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>🍽 {p.catering_nom}</div>}
                         {p.services?.length > 0 && (
                           <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                            ✨ {p.services.join(', ')}
+                            ✨ {p.services.map(s => s.nom).join(', ')}
                           </div>
                         )}
-                        {isSelected && (
-                          <div style={{ marginTop: 6, fontSize: 11, color, fontWeight: 600 }}>✓ Sélectionné</div>
-                        )}
+                        {isSelected && <div style={{ marginTop: 6, fontSize: 11, color, fontWeight: 600 }}>✓ Sélectionné</div>}
                       </div>
                     );
                   })}
                 </div>
               )}
-
               {selectedPack && (
                 <div style={{ marginTop: 10, background: '#10b98111', borderRadius: 10, padding: '10px 14px', fontSize: 13 }}>
                   <div style={{ fontWeight: 600, color: '#10b981', marginBottom: 4 }}>✅ Pack sélectionné : {selectedPack.nom}</div>
-                  <div style={{ color: '#64748b' }}>Prix total rempli automatiquement : <strong>{formatDA(selectedPack.prix)}</strong></div>
+                  <div style={{ color: '#64748b' }}>Prix total rempli automatiquement : <strong>{formatDA(Number(selectedPack.prix) + (selectedPack.services || []).reduce((s, sv) => s + (Number(sv.prix) || 0), 0))}</strong></div>
                   {selectedPack.catering_nom && <div style={{ color: '#64748b' }}>Catering inclus : <strong>{selectedPack.catering_nom}</strong> (sera appliqué automatiquement)</div>}
-                  {selectedPack.services?.length > 0 && <div style={{ color: '#64748b' }}>Services : {selectedPack.services.join(', ')}</div>}
+                  {selectedPack.services?.length > 0 && (
+                    <div style={{ color: '#64748b' }}>
+                      Services : {selectedPack.services.map(s => `${s.nom}${s.prix > 0 ? ` (${formatDA(s.prix)})` : ''}`).join(', ')}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -720,12 +705,15 @@ function ReservationFormModal({ editData, clients, onClose, onSaved, onNavigateT
             </div>
             <div className="form-group">
               <label>Nombre d'invités</label>
-              <input className="input" type="number" value={form.nombre_invites} onChange={e => setForm({...form, nombre_invites: e.target.value})} placeholder="Nombre d'invités" />
+              <input required className="input" type="text" inputMode="numeric" pattern="[0-9]*"
+                value={form.nombre_invites}
+                onChange={e => { if (/^\d*$/.test(e.target.value)) setForm({...form, nombre_invites: e.target.value}); }}
+                placeholder="Nombre d'invités" />
             </div>
             <div className="form-group">
               <label>Prix total (DA) *{selectedPack ? ' — issu du pack' : ''}</label>
-              <input className="input" type="number" value={form.prix_total}
-                onChange={e => setForm({...form, prix_total: e.target.value})}
+              <input className="input" type="text" inputMode="numeric" pattern="[0-9]*" value={form.prix_total}
+                onChange={e => { if (/^\d*$/.test(e.target.value)) setForm({...form, prix_total: e.target.value}); }}
                 placeholder="Entrez le prix total" required
                 style={selectedPack ? { color: '#10b981', fontWeight: 700 } : {}} />
             </div>
@@ -738,8 +726,9 @@ function ReservationFormModal({ editData, clients, onClose, onSaved, onNavigateT
                   value={form.avance ? Number(form.avance).toLocaleString('fr-DZ') + ' DA' : '0 DA'}
                   style={{ background: '#ffffff08', color: '#10b981', fontWeight: 700, cursor: 'default' }} />
               ) : (
-                <input className="input" type="number" value={form.avance}
-                  onChange={e => setForm({...form, avance: e.target.value})} placeholder="Entrez l'avance de client" />
+                <input className="input" type="text" inputMode="numeric" pattern="[0-9]*" value={form.avance}
+                  onChange={e => { if (/^\d*$/.test(e.target.value)) setForm({...form, avance: e.target.value}); }}
+                  placeholder="Entrez l'avance de client" />
               )}
             </div>
             <div className="form-group">
@@ -751,10 +740,14 @@ function ReservationFormModal({ editData, clients, onClose, onSaved, onNavigateT
                 style={{ background: '#ffffff08', color: '#f59e0b', fontWeight: 700, cursor: 'default' }} />
             </div>
           </div>
+
           <div className="form-group">
             <label>Notes</label>
-            <textarea className="input" rows="2" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Notes supplémentaires..."></textarea>
+            <textarea className="input" rows="2" value={form.notes}
+              onChange={e => setForm({...form, notes: e.target.value})}
+              placeholder="Notes supplémentaires..."></textarea>
           </div>
+
           <div className="modal-actions">
             <button type="button" className="btn btn-ghost" onClick={onClose}>Annuler</button>
             <button type="submit" className="btn btn-primary">✅ {editData ? 'Modifier' : 'Créer'}</button>
@@ -775,11 +768,7 @@ function Pagination({ currentPage, totalPages, totalItems, onPageChange }) {
   const getPageNumbers = () => {
     const pages = [];
     for (let i = 1; i <= totalPages; i++) {
-      if (
-        i === 1 ||
-        i === totalPages ||
-        (i >= currentPage - 1 && i <= currentPage + 1)
-      ) {
+      if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
         pages.push(i);
       } else if (
         (i === currentPage - 2 && currentPage > 3) ||
@@ -797,42 +786,27 @@ function Pagination({ currentPage, totalPages, totalItems, onPageChange }) {
         {from}–{to} sur {totalItems} réservation{totalItems > 1 ? 's' : ''}
       </span>
       <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-        {/* Précédent */}
-        <button
-          className="btn btn-ghost btn-sm"
-          disabled={currentPage === 1}
+        <button className="btn btn-ghost btn-sm" disabled={currentPage === 1}
           onClick={() => onPageChange(currentPage - 1)}
-          style={{ minWidth: 32, opacity: currentPage === 1 ? 0.35 : 1 }}
-        >‹</button>
-
-        {/* Numéros de pages */}
+          style={{ minWidth: 32, opacity: currentPage === 1 ? 0.35 : 1 }}>‹</button>
         {getPageNumbers().map((p, i) =>
           p === '...'
             ? <span key={`dots-${i}`} style={{ padding: '0 4px', color: '#64748b', fontSize: 13 }}>…</span>
             : (
-              <button
-                key={p}
-                onClick={() => onPageChange(p)}
+              <button key={p} onClick={() => onPageChange(p)}
                 style={{
                   minWidth: 32, height: 32, borderRadius: 8,
                   border: `1px solid ${p === currentPage ? '#6366f1' : '#ffffff22'}`,
                   background: p === currentPage ? '#6366f1' : 'transparent',
                   color: p === currentPage ? '#fff' : undefined,
                   fontWeight: p === currentPage ? 700 : 400,
-                  fontSize: 13, cursor: 'pointer',
-                  transition: 'all 0.12s',
-                }}
-              >{p}</button>
+                  fontSize: 13, cursor: 'pointer', transition: 'all 0.12s',
+                }}>{p}</button>
             )
         )}
-
-        {/* Suivant */}
-        <button
-          className="btn btn-ghost btn-sm"
-          disabled={currentPage === totalPages}
+        <button className="btn btn-ghost btn-sm" disabled={currentPage === totalPages}
           onClick={() => onPageChange(currentPage + 1)}
-          style={{ minWidth: 32, opacity: currentPage === totalPages ? 0.35 : 1 }}
-        >›</button>
+          style={{ minWidth: 32, opacity: currentPage === totalPages ? 0.35 : 1 }}>›</button>
       </div>
     </div>
   );
@@ -875,18 +849,6 @@ export default function ReservationsPage({ onNavigate }) {
     }
   };
 
-  const handleCancel = (id) => {
-    setConfirm({
-      message: 'Annuler cette réservation ?',
-      onConfirm: async () => {
-        setConfirm(null);
-        const res = await api.reservations.cancel(id);
-        if (res.success) { toast.success('Réservation annulée'); load(); }
-        else toast.error(res.error);
-      }
-    });
-  };
-
   const handleDelete = (id) => {
     setConfirm({
       message: 'Supprimer définitivement cette réservation ?\nTous les paiements, dépenses et affectations seront supprimés.',
@@ -922,7 +884,6 @@ export default function ReservationsPage({ onNavigate }) {
 
   return (
     <div className="page-container">
-      {/* Toolbar */}
       <div className="page-toolbar">
         <div className="filter-tabs">
           {[['all','Toutes'],['confirmed','Confirmées'],['pending','En attente']].map(([v,l]) => (
@@ -938,31 +899,18 @@ export default function ReservationsPage({ onNavigate }) {
       </div>
 
       <div className="card">
-        <input
-          className="search-input"
-          style={{ marginBottom: 12 }}
+        <input className="search-input" style={{ marginBottom: 12 }}
           placeholder="🔍 Rechercher par client, type..."
-          value={search}
-          onChange={e => handleSearchChange(e.target.value)}
-        />
+          value={search} onChange={e => handleSearchChange(e.target.value)} />
 
         {loading ? <div className="loading-page">Chargement...</div> : (
           <>
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Client</th>
-                  <th>Type</th>
-                  <th>Date</th>
-                  <th>Période</th>
-                  <th>Invités</th>
-                  <th>Prix total</th>
-                  <th>Payé</th>
-                  <th>Reste</th>
-                  <th>Équipe</th>
-                  <th>Statut</th>
-                  <th>Actions</th>
+                  <th>#</th><th>Client</th><th>Type</th><th>Date</th><th>Période</th>
+                  <th>Invités</th><th>Prix total</th><th>Payé</th><th>Reste</th>
+                  <th>Équipe</th><th>Statut</th><th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -972,21 +920,12 @@ export default function ReservationsPage({ onNavigate }) {
                     <td><span className="fw-bold">{r.client_nom}</span></td>
                     <td><span className="chip">{r.type_fete}</span></td>
                     <td>{formatDate(r.date_evenement)}</td>
-                    <td>
-                      <span style={{ fontSize: 12 }}>
-                        {r.periode === 'Matin' ? '🌅 Matin' : r.periode === 'Journée complète' ? '☀️ Journée' : '🌙 Soir'}
-                      </span>
-                    </td>
+                    <td><span style={{ fontSize: 12 }}>{r.periode === 'Matin' ? '🌅 Matin' : r.periode === 'Journée complète' ? '☀️ Journée' : '🌙 Soir'}</span></td>
                     <td>{r.nombre_invites}</td>
                     <td className="fw-bold">{formatDA(r.prix_total)}</td>
                     <td className="text-green">{formatDA(r.total_paye)}</td>
                     <td className="text-amber">{formatDA(r.prix_total - (r.total_paye || 0))}</td>
-                    <td>
-                      {r.nb_employees > 0
-                        ? <span className="chip chip-accent">👔 {r.nb_employees}</span>
-                        : <span style={{ color: '#64748b', fontSize: 12 }}>—</span>
-                      }
-                    </td>
+                    <td>{r.nb_employees > 0 ? <span className="chip chip-accent">👔 {r.nb_employees}</span> : <span style={{ color: '#64748b', fontSize: 12 }}>—</span>}</td>
                     <td><span className={`status-badge status-${r.statut}`}>{STATUS_LABELS[r.statut]}</span></td>
                     <td onClick={ev => ev.stopPropagation()}>
                       <div className="action-buttons">
@@ -999,21 +938,12 @@ export default function ReservationsPage({ onNavigate }) {
                 ))}
               </tbody>
             </table>
-
-            {/* ── Pagination ── */}
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={filtered.length}
-              onPageChange={setCurrentPage}
-            />
+            <Pagination currentPage={currentPage} totalPages={totalPages} totalItems={filtered.length} onPageChange={setCurrentPage} />
           </>
         )}
-
         {filtered.length === 0 && !loading && <div className="empty-state">Aucune réservation trouvée</div>}
       </div>
 
-      {/* Form modal */}
       {showForm && (
         <ReservationFormModal
           editData={editData}
@@ -1024,7 +954,6 @@ export default function ReservationsPage({ onNavigate }) {
         />
       )}
 
-      {/* Detail modal */}
       {detailId && !showForm && (
         <ReservationDetailModal
           reservationId={detailId}

@@ -265,8 +265,19 @@ function PaymentFormModal({ editData, reservations, preselectedResId, onClose, o
           <div className="form-grid-2">
             <div className="form-group">
               <label>Montant (DA) *</label>
-              <input className="input" type="number" value={form.montant}
-                onChange={e => setForm({...form, montant: e.target.value})} placeholder="Entrez le montant" required />
+             <input
+                className="input"
+                type="text"
+                inputMode="numeric"
+                value={form.montant}
+                onChange={e => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  setForm({...form, montant: val});
+                }}
+                placeholder="Entrez le montant"
+                required
+              />
+
             </div>
             <div className="form-group">
               <label>Date paiement</label>

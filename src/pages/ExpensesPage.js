@@ -296,14 +296,15 @@ function ExpensesPage() {
                 />
               </div>
               <div className="form-grid-2">
-                <div className="form-group">
+               <div className="form-group">
                   <label>Montant (DA) *</label>
                   <input
                     className="input"
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     placeholder="Montant"
                     value={form.montant}
-                    onChange={e => setForm({ ...form, montant: e.target.value })}
+                    onChange={e => setForm({ ...form, montant: e.target.value.replace(/[^0-9]/g, '') })}
                     required
                   />
                 </div>

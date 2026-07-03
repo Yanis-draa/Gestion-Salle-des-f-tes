@@ -46,30 +46,56 @@ module.exports = function(ipcMain) {
     } catch(e) { return { success: false, error: e.message }; }
   });
 
-  ipcMain.handle('catering:updateTemplate', async (_, id, data) => {
-    try {
-      getDb().prepare(`
-        UPDATE menu_templates
-        SET nom=?, description=?, prix_par_personne=?, type_repas=?,
-            entrees=?, plats=?, boissons=?, desserts=?, cafe=?, collation=?, notes=?
-        WHERE id=?
-      `).run(
-        data.nom,
-        data.description || '',
-        data.prix_par_personne || 0,
-        data.type_repas || 'Complet',
-        data.entrees || '',
-        data.plats || '',
-        data.boissons || '',
-        data.desserts || '',
-        data.cafe || '',
-        data.collation || '',
-        data.notes || '',
-        id
-      );
-      return { success: true };
-    } catch(e) { return { success: false, error: e.message }; }
-  });
+ ipcMain.handle('catering:updateTemplate', async (_, id, data) => {
+  try {
+    const db = getDb();
+    const prix = Number(data.prix_par_personne) || 0;
+
+    db.prepare(`
+      UPDATE menu_templates
+      SET nom=?, description=?, prix_par_personne=?, type_repas=?,
+          entrees=?, plats=?, boissons=?, desserts=?, cafe=?, collation=?, notes=?
+      WHERE id=?
+    `).run(
+      data.nom,
+      data.description || '',
+      prix,
+      data.type_repas || 'Complet',
+      data.entrees || '',
+      data.plats || '',
+      data.boissons || '',
+      data.desserts || '',
+      data.cafe || '',
+      data.collation || '',
+      data.notes || '',
+      id
+    );
+
+    // Propager le nouveau prix aux réservations liées
+    db.prepare(`
+      UPDATE catering
+      SET prix_par_personne = ?,
+          total_catering = nombre_personnes * ?
+      WHERE menu_template_id = ?
+    `).run(prix, prix, id);
+
+    // Mettre à jour les dépenses de chaque réservation affectée
+    const affected = db.prepare(`
+      SELECT reservation_id, total_catering, nom_menu, nombre_personnes
+      FROM catering WHERE menu_template_id = ?
+    `).all(id);
+
+    for (const c of affected) {
+      db.prepare(`
+        UPDATE reservation_expenses
+        SET montant = ?
+        WHERE reservation_id = ? AND categorie = 'Catering'
+      `).run(c.total_catering, c.reservation_id);
+    }
+
+    return { success: true };
+  } catch(e) { return { success: false, error: e.message }; }
+});
 
 ipcMain.handle('catering:deleteTemplate', async (_, id) => {
   try {

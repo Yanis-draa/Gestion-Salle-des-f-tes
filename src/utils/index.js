@@ -69,6 +69,8 @@ export const api = window.api || {
     deleteAll: async () => ({ success: true }),
     checkConflict: async () => ({ success: true, conflict: false }),
     getFinancialDetails: async () => ({ success: true, data: {} }),
+     deletePackExpenses: async () => ({ success: true }),
+    addExpense: async () => ({ success: true }),
   },
   payments: {
     getAll: async () => ({ success: true, data: [] }),

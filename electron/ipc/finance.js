@@ -1,5 +1,6 @@
 const { getDb } = require('../../database/db');
 module.exports = function(ipcMain) {
+
   ipcMain.handle('finance:getSummary', async (_, month, year) => {
     try {
       const db = getDb();
@@ -20,8 +21,10 @@ module.exports = function(ipcMain) {
         const mm = String(m).padStart(2,'0');
         const revenus = db.prepare(`SELECT COALESCE(SUM(montant),0) as t FROM payments WHERE strftime('%m',date_paiement)=? AND strftime('%Y',date_paiement)=?`).get(mm, String(year)).t;
         const depenses = db.prepare(`SELECT COALESCE(SUM(montant),0) as t FROM monthly_expenses WHERE mois=? AND annee=?`).get(m, year).t;
+        const depensesRes = db.prepare(`SELECT COALESCE(SUM(re.montant),0) as t FROM reservation_expenses re JOIN reservations r ON r.id=re.reservation_id WHERE strftime('%m',r.date_evenement)=? AND strftime('%Y',r.date_evenement)=?`).get(mm, String(year)).t;
         const nbRes = db.prepare(`SELECT COUNT(*) as c FROM reservations WHERE strftime('%m',date_evenement)=? AND strftime('%Y',date_evenement)=? AND statut!='cancelled'`).get(mm, String(year)).c;
-        months.push({ mois: m, revenus, depenses, profit: revenus - depenses, nb_reservations: nbRes });
+        const totalDepenses = depenses + depensesRes;
+        months.push({ mois: m, revenus, depenses: totalDepenses, profit: revenus - totalDepenses, nb_reservations: nbRes });
       }
       return { success: true, data: months };
     } catch(e) { return { success: false, error: e.message }; }
@@ -31,9 +34,11 @@ module.exports = function(ipcMain) {
     try {
       const db = getDb();
       const revenus = db.prepare(`SELECT COALESCE(SUM(montant),0) as t FROM payments WHERE strftime('%Y',date_paiement)=?`).get(String(year)).t;
-      const depenses = db.prepare(`SELECT COALESCE(SUM(montant),0) as t FROM monthly_expenses WHERE annee=?`).get(year).t;
+      const depensesGenerales = db.prepare(`SELECT COALESCE(SUM(montant),0) as t FROM monthly_expenses WHERE annee=?`).get(year).t;
+      const depensesRes = db.prepare(`SELECT COALESCE(SUM(re.montant),0) as t FROM reservation_expenses re JOIN reservations r ON r.id=re.reservation_id WHERE strftime('%Y',r.date_evenement)=?`).get(String(year)).t;
+      const totalDepenses = depensesGenerales + depensesRes;
       const nbRes = db.prepare(`SELECT COUNT(*) as c FROM reservations WHERE strftime('%Y',date_evenement)=? AND statut!='cancelled'`).get(String(year)).c;
-      return { success: true, data: { revenus, depenses, profit: revenus - depenses, nb_reservations: nbRes } };
+      return { success: true, data: { revenus, depenses: totalDepenses, profit: revenus - totalDepenses, nb_reservations: nbRes } };
     } catch(e) { return { success: false, error: e.message }; }
   });
 
